@@ -248,12 +248,14 @@ export const sessionsGitHubHandlers: GatewayRequestHandlers = {
             return;
           }
           let shared: SessionGitHubOptionsResult["shared"] = null;
+          let stale = false;
           let sharedUnavailableReason: SessionGitHubOptionsResult["sharedUnavailableReason"];
           try {
             const identity = await prepareCurrentGitHubPublicationOptionsIdentity(
               read.session.agentId,
               () => deadline.signal.throwIfAborted(),
             );
+            stale = identity.stale === true;
             shared = {
               source: identity.source,
               accountId: identity.account.accountId,
@@ -299,6 +301,7 @@ export const sessionsGitHubHandlers: GatewayRequestHandlers = {
           options.respond(true, {
             personal,
             shared,
+            ...(stale || personal?.stale ? { stale: true } : {}),
             ...(sharedUnavailableReason ? { sharedUnavailableReason } : {}),
             pendingPersonal,
             latestShared,
