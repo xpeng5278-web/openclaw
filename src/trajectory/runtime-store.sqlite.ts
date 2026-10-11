@@ -51,11 +51,15 @@ export type SqliteTrajectoryRuntimeScope = {
   assertCommitAllowed?: () => void;
 };
 
+export type SerializedTrajectoryEvent = Pick<TrajectoryEvent, "runId" | "ts"> & {
+  line: string;
+};
+
 export type SqliteTrajectoryRuntimeAppend = Pick<
   SqliteTrajectoryRuntimeScope,
   "sessionId" | "maxRuntimeBytes" | "maxGlobalRuntimeBytes"
 > & {
-  events: readonly TrajectoryEvent[];
+  events: readonly SerializedTrajectoryEvent[];
   /** The queued prefix exceeded this session's rolling window before admission. */
   discardPrevious?: boolean;
 };
@@ -85,7 +89,7 @@ const log = createSubsystemLogger("trajectory");
 /** Appends runtime trajectory events to the per-agent SQLite session store. */
 export function appendSqliteTrajectoryRuntimeEvents(
   scope: SqliteTrajectoryRuntimeScope & Pick<SqliteTrajectoryRuntimeAppend, "discardPrevious">,
-  events: readonly TrajectoryEvent[],
+  events: SqliteTrajectoryRuntimeAppend["events"],
 ): void {
   if (events.length === 0) {
     return;
@@ -154,7 +158,7 @@ export function appendSqliteTrajectoryRuntimeEventsWithWriter(
   const rows = input.events.map((event) => ({
     session_id: sessionId,
     run_id: event.runId ?? null,
-    event_json: JSON.stringify(event),
+    event_json: event.line,
     created_at: parseDateStringTimestampMs(event.ts) ?? Date.now(),
     seq: 0,
   }));
